@@ -1,3 +1,22 @@
 spring:
   application:
     name: E-commerce API
+
+  datasource:
+    url: JDBC:mysql://localhost:3307/ecommerce?useTimezone=true?useSSL=false&serverTimezone=UTC
+    username: root
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  server:
+    port: 8080
+
+
