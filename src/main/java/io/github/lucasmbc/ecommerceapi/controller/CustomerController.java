@@ -7,12 +7,12 @@ import io.github.lucasmbc.ecommerceapi.domain.model.Customer;
 import io.github.lucasmbc.ecommerceapi.service.CustomerService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/customers")
@@ -25,10 +25,12 @@ public class CustomerController {
     }
 
     @PostMapping
-    public ResponseEntity<CustomerResponseDTO> create(@Valid @RequestBody CustomerRequestDTO request) {
-        Customer customer = CustomerMapper.toEntity(request);
+    public ResponseEntity<CustomerResponseDTO> create(
+            @Valid @RequestBody CustomerRequestDTO request,
+            Authentication authentication
+    ) {
 
-        Customer saved = customerService.create(customer);
+        Customer saved = customerService.create(request, authentication.getName());
 
         CustomerResponseDTO customerResponseDTO = CustomerMapper.toResponse(saved);
 
@@ -47,21 +49,25 @@ public class CustomerController {
         return ResponseEntity.ok(customerResponseDTOs);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<CustomerResponseDTO> findById(@PathVariable String id) {
-        var customer = customerService.findById(UUID.fromString(id));
+    @GetMapping("/{email}")
+    public ResponseEntity<CustomerResponseDTO> findByEmail(@PathVariable String email) {
+        var customer = customerService.findByEmail(email);
         return ResponseEntity.ok(CustomerMapper.toResponse(customer));
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<CustomerResponseDTO> update(@PathVariable String id, @RequestBody CustomerRequestDTO request) {
-        var customer = customerService.update(UUID.fromString(id), CustomerMapper.toEntity(request));
+    @PutMapping
+    public ResponseEntity<CustomerResponseDTO> update(
+            Authentication authentication,
+            @RequestBody CustomerRequestDTO request
+    ) {
+        var customer = customerService.update(authentication.getName(), request);
+
         return ResponseEntity.ok(CustomerMapper.toResponse(customer));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
-        customerService.delete(UUID.fromString(id));
+    @DeleteMapping
+    public ResponseEntity<Void> delete(Authentication authentication) {
+        customerService.delete(authentication.getName());
         return ResponseEntity.noContent().build();
     }
 }
