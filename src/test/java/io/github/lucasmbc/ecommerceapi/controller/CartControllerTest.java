@@ -3,6 +3,7 @@ package io.github.lucasmbc.ecommerceapi.controller;
 import io.github.lucasmbc.ecommerceapi.domain.model.CartItem;
 import io.github.lucasmbc.ecommerceapi.domain.model.Customer;
 import io.github.lucasmbc.ecommerceapi.domain.model.Product;
+import io.github.lucasmbc.ecommerceapi.domain.model.User;
 import io.github.lucasmbc.ecommerceapi.service.CartService;
 import io.github.lucasmbc.ecommerceapi.service.exception.CustomBadRequestException;
 import io.github.lucasmbc.ecommerceapi.service.exception.NotFoundException;
@@ -10,7 +11,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -25,12 +27,15 @@ import java.util.UUID;
 import static org.hamcrest.Matchers.*;
 import static org.mockito.BDDMockito.*;
 import static org.mockito.BDDMockito.any;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(CartController.class)
+@SpringBootTest
+@AutoConfigureMockMvc
 class CartControllerTest {
 
     @Autowired
@@ -46,14 +51,22 @@ class CartControllerTest {
 
     private Product product;
 
+    private User user;
+
     @BeforeEach
     void setUp() {
+        user = new User();
+        user.setEmail("user@email.com");
+        user.setPassword("123456");
+        user.setRole("USER");
+
         customer = new Customer();
         customer.setId(UUID.randomUUID());
         customer.setName("Joao");
-        customer.setEmail("joao@email.com");
-        customer.setPassword("123456");
         customer.setCpf("892.334.220-38");
+        customer.setPhone("(85)999999999");
+        customer.setAddress("Rua das Flores");
+        customer.setUser(user);
 
         product = new Product();
         product.setId(UUID.randomUUID());
@@ -64,13 +77,15 @@ class CartControllerTest {
     }
 
     @Test
-    @DisplayName("POST /{customerId}/items/{productId} should create cart and return 201 created cart")
+    @DisplayName("POST /carts/items/{productId} should create cart and return 201 created cart")
     void createCart_ShouldReturnCreatedCart() throws Exception {
-        doNothing().when(cartService).addItem(any(UUID.class), any(UUID.class), anyInt());
+        doNothing().when(cartService).addItem(any(String.class), any(UUID.class), anyInt());
 
         ResultActions response = mockMvc.perform(
-                post("/carts/{customerId}/items/{productId}", customer.getId(), product.getId())
+                post("/carts/items/{productId}", product.getId())
                         .param("quantity", "1")
+                        .with(csrf())
+                        .with(user(user.getEmail()).roles("USER", "ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON)
         );
 
@@ -78,20 +93,22 @@ class CartControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(header().exists("Location"))
                 .andExpect(header().string("Location",
-                        containsString("/carts/" + customer.getId() + "/items/" + product.getId())));
+                        containsString("/carts/items/" + product.getId())));
 
-        verify(cartService, times(1))
-                .addItem(customer.getId(), product.getId(), 1);
+        then(cartService).should(times(1))
+                .addItem(user.getEmail(), product.getId(), 1);
     }
 
     @Test
     @DisplayName("Should return 400 when quantity is zero")
     void addItem_ShouldReturnBadRequest_WhenQuantityIsZero() throws Exception {
 
-        doThrow(new CustomBadRequestException("Quantity must be greater than zero")).when(cartService).addItem(any(UUID.class), any(UUID.class), anyInt());
+        doThrow(new CustomBadRequestException("Quantity must be greater than zero")).when(cartService).addItem(any(String.class), any(UUID.class), anyInt());
 
-        ResultActions response = mockMvc.perform(post("/carts/{customerId}/items/{productId}", customer.getId(), product.getId())
+        ResultActions response = mockMvc.perform(post("/carts/items/{productId}", product.getId())
                 .param("quantity", "0")
+                .with(csrf())
+                .with(user(user.getEmail()).roles("USER", "ADMIN"))
                 .contentType(MediaType.APPLICATION_JSON));
 
         response.andDo(print())
@@ -103,10 +120,12 @@ class CartControllerTest {
     @DisplayName("Should return 400 when quantity is negative")
     void addItem_ShouldReturnBadRequest_WhenQuantityIsNegative() throws Exception {
 
-        doThrow(new CustomBadRequestException("Quantity must be greater than zero")).when(cartService).addItem(any(UUID.class), any(UUID.class), anyInt());
+        doThrow(new CustomBadRequestException("Quantity must be greater than zero")).when(cartService).addItem(any(String.class), any(UUID.class), anyInt());
 
-        ResultActions response = mockMvc.perform(post("/carts/{customerId}/items/{productId}", customer.getId(), product.getId())
+        ResultActions response = mockMvc.perform(post("/carts/items/{productId}", product.getId())
                 .param("quantity", "-1")
+                .with(csrf())
+                .with(user(user.getEmail()).roles("USER", "ADMIN"))
                 .contentType(MediaType.APPLICATION_JSON));
 
         response.andDo(print())
@@ -118,9 +137,11 @@ class CartControllerTest {
     @DisplayName("Should return 400 when quantity parameter is missing")
     void addItem_ShouldReturnBadRequest_WhenQuantityIsMissing() throws Exception {
 
-        doThrow(new CustomBadRequestException("Quantity must be greater than zero")).when(cartService).addItem(any(UUID.class), any(UUID.class), anyInt());
+        doThrow(new CustomBadRequestException("Quantity must be greater than zero")).when(cartService).addItem(any(String.class), any(UUID.class), anyInt());
 
-        ResultActions response = mockMvc.perform(post("/carts/{customerId}/items/{productId}", customer.getId(), product.getId())
+        ResultActions response = mockMvc.perform(post("/carts/items/{productId}", product.getId())
+                .with(csrf())
+                .with(user(user.getEmail()).roles("USER", "ADMIN"))
                 .contentType(MediaType.APPLICATION_JSON));
 
         response.andDo(print())
@@ -131,10 +152,12 @@ class CartControllerTest {
     @DisplayName("Should return 400 when quantity exceeds product stock")
     void addItem_ShouldReturnBadRequest_WhenQuantityExceedsProductStock() throws Exception {
 
-        doThrow(new CustomBadRequestException("Product stock less than quantity")).when(cartService).addItem(any(UUID.class), any(UUID.class), anyInt());
+        doThrow(new CustomBadRequestException("Product stock less than quantity")).when(cartService).addItem(any(String.class), any(UUID.class), anyInt());
 
-        ResultActions response = mockMvc.perform(post("/carts/{customerId}/items/{productId}", customer.getId(), product.getId())
+        ResultActions response = mockMvc.perform(post("/carts/items/{productId}", product.getId())
                 .param("quantity", "11")
+                .with(csrf())
+                .with(user(user.getEmail()).roles("USER", "ADMIN"))
                 .contentType(MediaType.APPLICATION_JSON));
 
         response.andDo(print())
@@ -145,11 +168,10 @@ class CartControllerTest {
     @Test
     @DisplayName("Should return 404 when customer not found")
     void addItem_ShouldReturnNotFound_WhenCustomerNotFound() throws Exception {
-        UUID customerId = UUID.randomUUID();
 
-        doThrow(new NotFoundException("Customer not found")).when(cartService).addItem(any(UUID.class), any(UUID.class), anyInt());
+        doThrow(new NotFoundException("Customer not found")).when(cartService).addItem(any(String.class), any(UUID.class), anyInt());
 
-        ResultActions response = mockMvc.perform(post("/carts/{customerId}/items/{productId}", customerId, product.getId())
+        ResultActions response = mockMvc.perform(post("/carts/items/{productId}", product.getId())
                 .param("quantity", "1")
                 .contentType(MediaType.APPLICATION_JSON));
 
@@ -161,12 +183,12 @@ class CartControllerTest {
     @Test
     @DisplayName("Should return 404 when product not found")
     void addItem_ShouldReturnNotFound_WhenProductNotFound() throws Exception {
-        UUID productId = UUID.randomUUID();
+        doThrow(new NotFoundException("Product not found")).when(cartService).addItem(any(String.class), any(UUID.class), anyInt());
 
-        doThrow(new NotFoundException("Product not found")).when(cartService).addItem(any(UUID.class), any(UUID.class), anyInt());
-
-        ResultActions response = mockMvc.perform(post("/carts/{customerId}/items/{productId}", customer.getId(), productId)
+        ResultActions response = mockMvc.perform(post("/carts/items/{productId}", product.getId())
                 .param("quantity", "1")
+                .with(csrf())
+                .with(user(user.getEmail()).roles("USER", "ADMIN"))
                 .contentType(MediaType.APPLICATION_JSON));
 
         response.andDo(print())
@@ -175,17 +197,19 @@ class CartControllerTest {
     }
 
     @Test
-    @DisplayName("GET /carts/{customerId} should return cart items when valid ID is provided")
+    @DisplayName("GET /carts should return cart items when valid User Email is provided")
     void getCartById_ShouldReturnCartItems_WhenValidIdProvided() throws Exception {
         List<CartItem> cartItems = Arrays.asList(
                 createCartItem("iPhone", BigDecimal.valueOf(3000), 2),
                 createCartItem("MacBook", BigDecimal.valueOf(8000), 1)
         );
 
-        given(cartService.getItems(any(UUID.class))).willReturn(cartItems);
+        given(cartService.getItems(any(String.class))).willReturn(cartItems);
 
         ResultActions response = mockMvc.perform(
-                get("/carts/{customerId}", customer.getId())
+                get("/carts")
+                        .with(csrf())
+                        .with(user(user.getEmail()).roles("USER", "ADMIN"))
         );
 
         response.andDo(print())
@@ -195,24 +219,27 @@ class CartControllerTest {
                 .andExpect(jsonPath("$[0].quantity", is(2)))
                 .andExpect(jsonPath("$[1].productName", is("MacBook")))
                 .andExpect(jsonPath("$[1].quantity", is(1)));
+
+        then(cartService).should(times(1)).getItems(user.getEmail());
     }
 
     @Test
-    @DisplayName("GET /carts/{customerId} should return 404 when cart not found")
+    @DisplayName("GET /carts should return 404 when cart not found")
     void getCartById_ShouldReturn404_WhenCartNotFound() throws Exception {
 
-        given(cartService.getItems(customer.getId()))
+        given(cartService.getItems(any(String.class)))
                 .willThrow(new NotFoundException("Cart not found"));
 
         ResultActions response = mockMvc.perform(
-                get("/carts/{customerId}", customer.getId())
+                get("/carts")
+                        .with(csrf())
+                        .with(user(user.getEmail()).roles("USER", "ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON)
         );
 
         response.andDo(print())
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message", is("Cart not found")));
-
     }
 
     private CartItem createCartItem(String productName, BigDecimal price, Integer quantity) {
