@@ -1,6 +1,9 @@
 package io.github.lucasmbc.ecommerceapi.service;
 
-import io.github.lucasmbc.ecommerceapi.domain.model.*;
+import io.github.lucasmbc.ecommerceapi.domain.model.Cart;
+import io.github.lucasmbc.ecommerceapi.domain.model.Order;
+import io.github.lucasmbc.ecommerceapi.domain.model.OrderItem;
+import io.github.lucasmbc.ecommerceapi.domain.model.OrderStatus;
 import io.github.lucasmbc.ecommerceapi.domain.repository.CartRepository;
 import io.github.lucasmbc.ecommerceapi.domain.repository.OrderRepository;
 import io.github.lucasmbc.ecommerceapi.service.exception.NotFoundException;
@@ -9,7 +12,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 public class OrderService {
@@ -22,8 +24,8 @@ public class OrderService {
         this.cartRepository = cartRepository;
     }
 
-    public Order checkout(UUID customerId) {
-        Cart cart = cartRepository.findByCustomerId(customerId)
+    public Order checkout(String userEmail) {
+        Cart cart = cartRepository.findByCustomerUserEmail(userEmail)
                 .orElseThrow(() -> new NotFoundException("Cart not found"));
 
         Order order = new Order();
