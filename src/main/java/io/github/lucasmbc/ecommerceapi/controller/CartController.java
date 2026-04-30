@@ -4,6 +4,7 @@ import io.github.lucasmbc.ecommerceapi.controller.dto.response.CartItemResponseD
 import io.github.lucasmbc.ecommerceapi.controller.mapper.CartItemMapper;
 import io.github.lucasmbc.ecommerceapi.service.CartService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -20,9 +21,9 @@ public class CartController {
         this.cartService = cartService;
     }
 
-    @PostMapping("/{customerId}/items/{productId}")
-    public ResponseEntity<Void> addItem(@PathVariable String customerId, @PathVariable String productId, @RequestParam Integer quantity) {
-        cartService.addItem(UUID.fromString(customerId), UUID.fromString(productId), quantity);
+    @PostMapping("/items/{productId}")
+    public ResponseEntity<Void> addItem(Authentication authentication, @PathVariable String productId, @RequestParam Integer quantity) {
+        cartService.addItem(authentication.getName(), UUID.fromString(productId), quantity);
 
         var location = ServletUriComponentsBuilder
                 .fromCurrentRequest()
@@ -32,9 +33,9 @@ public class CartController {
         return ResponseEntity.created(location).build();
     }
 
-    @GetMapping("/{customerId}")
-    public List<CartItemResponseDTO> getCart(@PathVariable String customerId) {
-        return cartService.getItems(UUID.fromString(customerId))
+    @GetMapping
+    public List<CartItemResponseDTO> getCart(Authentication authentication) {
+        return cartService.getItems(authentication.getName())
                 .stream()
                 .map(CartItemMapper::toResponse)
                 .toList();
