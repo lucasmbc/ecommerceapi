@@ -18,10 +18,10 @@ public class Cart {
     private LocalDateTime createdAt;
 
     @OneToOne
-    @JoinColumn(name = "customer_id")
+    @JoinColumn(name = "customer_id", nullable = false, unique = true)
     private Customer customer;
 
-    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CartItem> items;
 
     public Cart() {
