@@ -33,13 +33,13 @@ public class CartService {
     }
 
     @Transactional
-    public void addItem(UUID customerId, UUID productId, Integer quantity) throws CustomBadRequestException, NotFoundException {
+    public void addItem(String userEmail, UUID productId, Integer quantity) throws CustomBadRequestException, NotFoundException {
 
         if (quantity == null || quantity <= 0) {
             throw new CustomBadRequestException("Quantity must be greater than zero");
         }
 
-        Customer customer = customerRepository.findById(customerId).orElseThrow(() -> new NotFoundException("Customer not found"));
+        Customer customer = customerRepository.findByUserEmail(userEmail).orElseThrow(() -> new NotFoundException("Customer not found"));
 
         Product product = productRepository.findById(productId).orElseThrow(() -> new NotFoundException("Product not found"));
 
@@ -47,7 +47,7 @@ public class CartService {
             throw new CustomBadRequestException("Product stock less than quantity");
         }
 
-        Cart cart = cartRepository.findByCustomerId(customerId).orElseGet(() -> createCart(customer));
+        Cart cart = cartRepository.findByCustomerUserEmail(userEmail).orElseGet(() -> createCart(customer));
 
         CartItem item = cartItemRepository
                 .findByCartIdAndProductId(cart.getId(), productId)
@@ -59,8 +59,8 @@ public class CartService {
     }
 
     @Transactional(readOnly = true)
-    public List<CartItem> getItems(UUID customerId) {
-        Cart cart = cartRepository.findByCustomerId(customerId).orElseThrow(() -> new NotFoundException("Cart not found"));
+    public List<CartItem> getItems(String userEmail) {
+        Cart cart = cartRepository.findByCustomerUserEmail(userEmail).orElseThrow(() -> new NotFoundException("Cart not found"));
         return cart.getItems();
     }
 
