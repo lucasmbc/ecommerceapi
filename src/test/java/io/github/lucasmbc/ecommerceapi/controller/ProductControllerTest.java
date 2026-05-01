@@ -9,7 +9,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -19,16 +20,20 @@ import tools.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.is;
 import static org.mockito.BDDMockito.*;
-import static org.mockito.BDDMockito.any;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(ProductController.class)
+@SpringBootTest
+@AutoConfigureMockMvc
 class ProductControllerTest {
 
     @Autowired
@@ -53,6 +58,10 @@ class ProductControllerTest {
         savedProduct = createProduct(dto.getName(), dto.getDescription(), dto.getPrice(), dto.getImageUrl(), dto.getStock(), category);
     }
 
+    private String createJson(Map<String, Object> fields) throws Exception {
+        return objectMapper.writeValueAsString(fields);
+    }
+
     @Test
     @DisplayName("POST /products should create product and return 201 created product")
     void createProduct_ShouldReturnCreatedProduct() throws Exception {
@@ -61,6 +70,8 @@ class ProductControllerTest {
         ResultActions response = mockMvc.perform(
                 post("/products")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf())
+                        .with(user("admin").roles("USER", "ADMIN"))
                         .content(objectMapper.writeValueAsString(dto))
         );
 
@@ -74,53 +85,69 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.stock", is(savedProduct.getStock())))
                 .andExpect(jsonPath("$.categoryId", is(category.getId().toString())))
                 .andExpect(jsonPath("$.categoryName", is(category.getName())));
+
+        then(productService).should().create(any(ProductRequestDTO.class));
+    }
+
+    @Test
+    @DisplayName("POST /products should return 403 Forbidden when user does not have ADMIN role")
+    void createProduct_ShouldReturnForbidden_WhenUserIsNotAdmin() throws Exception {
+        mockMvc.perform(
+                post("/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf())
+                        .with(user("user").roles("USER"))
+                        .content(objectMapper.writeValueAsString(dto))
+        ).andExpect(status().isForbidden());
+
+        then(productService).should(never()).create(any(ProductRequestDTO.class));
     }
 
     @Test
     @DisplayName("POST /products should return 400 when required fields are missing")
     void createProduct_ShouldReturnBadRequest_WhenRequiredFieldsMissing() throws Exception {
 
-        String invalidJson = """
-        {
-            "name": "",
-            "price": 100,
-            "stock": 10,
-            "categoryId": "123e4567-e89b-12d3-a456-426655440000"
-        }
-        """;
+        String invalidJson = createJson(Map.of(
+                "name", "",
+                "price", 100,
+                "stock", 10,
+                "categoryId", "123e4567-e89b-12d3-a456-426655440000")
+        );
 
         mockMvc.perform(post("/products")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf())
+                        .with(user("admin").roles("USER", "ADMIN"))
                         .content(invalidJson))
                 .andExpect(status().isBadRequest())
                 .andDo(print())
                 .andExpect(jsonPath("$.error", is("Validation error")));
 
-        verify(productService, never()).create(any());
+        then(productService).should(never()).create(any(ProductRequestDTO.class));
     }
 
     @Test
     @DisplayName("POST /products should return 400 when image URL is invalid")
     void createProduct_ShouldReturnBadRequest_WhenImageUrlIsInvalid() throws Exception {
 
-        String invalidJson = """
-        {
-            "name": "IPhone",
-            "price": 5000,
-            "stock": 10,
-            "imageUrl": "urlInvalid",
-            "categoryId": "123e4567-e89b-12d3-a456-426655440000"
-        }
-        """;
+        String invalidJson = createJson(Map.of(
+                "name", "IPhone",
+                "price", 5000,
+                "stock", 10,
+                "imageUrl", "urlInvalid",
+                "categoryId", "123e4567-e89b-12d3-a456-426655440000")
+        );
 
         mockMvc.perform(post("/products")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf())
+                        .with(user("admin").roles("USER", "ADMIN"))
                         .content(invalidJson))
                 .andExpect(status().isBadRequest())
                 .andDo(print())
                 .andExpect(jsonPath("$.error", is("Validation error")));
 
-        verify(productService, never()).create(any());
+        then(productService).should(never()).create(any(ProductRequestDTO.class));
     }
 
     @Test
@@ -132,6 +159,8 @@ class ProductControllerTest {
         ResultActions response = mockMvc.perform(
                 post("/products")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf())
+                        .with(user("admin").roles("USER", "ADMIN"))
                         .content(objectMapper.writeValueAsString(dto))
         );
 
@@ -152,11 +181,17 @@ class ProductControllerTest {
 
         given(productService.findAll()).willReturn(productList);
 
-        ResultActions response = mockMvc.perform(get("/products"));
+        ResultActions response = mockMvc.perform(
+                get("/products")
+                    .with(csrf())
+                    .with(user("admin").roles("USER", "ADMIN"))
+        );
 
         response.andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.size()", is(productList.size())));
+
+        then(productService).should().findAll();
     }
 
     @Test
@@ -164,7 +199,11 @@ class ProductControllerTest {
     void getAllProducts_ShouldReturnNotFoundException_WhenEmpty() throws Exception {
         given(productService.findAll()).willThrow(new NotFoundException("Products not found"));
 
-        ResultActions response = mockMvc.perform(get("/products"));
+        ResultActions response = mockMvc.perform(
+                get("/products")
+                        .with(csrf())
+                        .with(user("admin").roles("USER", "ADMIN"))
+        );
 
         response.andDo(print())
                 .andExpect(status().isNotFound())
@@ -176,7 +215,11 @@ class ProductControllerTest {
     void getProductById_ShouldReturnProduct_WhenValidIdProvided() throws Exception {
         given(productService.findById(any(UUID.class))).willReturn(savedProduct);
 
-        ResultActions response = mockMvc.perform(get("/products/{id}", savedProduct.getId()));
+        ResultActions response = mockMvc.perform(
+                get("/products/{id}", savedProduct.getId())
+                        .with(csrf())
+                        .with(user("admin").roles("USER", "ADMIN"))
+        );
 
         response.andDo(print())
                 .andExpect(status().isOk())
@@ -186,6 +229,8 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.stock", is(savedProduct.getStock())))
                 .andExpect(jsonPath("$.categoryId", is(category.getId().toString())))
                 .andExpect(jsonPath("$.categoryName", is(category.getName())));
+
+        then(productService).should().findById(any(UUID.class));
     }
 
     @Test
@@ -193,11 +238,17 @@ class ProductControllerTest {
     void getProductById_ShouldReturnNotFoundException_WhenInvalidIdProvided() throws Exception {
         given(productService.findById(any(UUID.class))).willThrow(new NotFoundException("Product not found"));
 
-        ResultActions response = mockMvc.perform(get("/products/{id}", savedProduct.getId()));
+        ResultActions response = mockMvc.perform(
+                get("/products/{id}", savedProduct.getId())
+                        .with(csrf())
+                        .with(user("admin").roles("USER", "ADMIN"))
+        );
 
         response.andDo(print())
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message", containsString("Product not found")));
+
+        then(productService).should().findById(any(UUID.class));
     }
 
     @Test
@@ -212,6 +263,8 @@ class ProductControllerTest {
         ResultActions response = mockMvc.perform(
                 put("/products/{id}", savedProduct.getId())
                         .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf())
+                        .with(user("admin").roles("USER", "ADMIN"))
                         .content(objectMapper.writeValueAsString(updatedProductDto))
         );
 
@@ -221,6 +274,8 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.description", is(updatedProductDto.getDescription())))
                 .andExpect(jsonPath("$.price", is(updatedProductDto.getPrice().intValue())))
                 .andExpect(jsonPath("$.stock", is(updatedProductDto.getStock())));
+
+        then(productService).should().update(any(UUID.class), any(ProductRequestDTO.class));
     }
 
     @Test
@@ -233,12 +288,16 @@ class ProductControllerTest {
         ResultActions response = mockMvc.perform(
                 put("/products/{id}", savedProduct.getId())
                         .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf())
+                        .with(user("admin").roles("USER", "ADMIN"))
                         .content(objectMapper.writeValueAsString(updatedProductDto))
         );
 
         response.andDo(print())
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message", containsString("Product not found")));
+
+        then(productService).should().update(any(UUID.class), any(ProductRequestDTO.class));
     }
 
     @Test
@@ -251,12 +310,16 @@ class ProductControllerTest {
         ResultActions response = mockMvc.perform(
                 put("/products/{id}", savedProduct.getId())
                         .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf())
+                        .with(user("admin").roles("USER", "ADMIN"))
                         .content(objectMapper.writeValueAsString(updatedProductDto))
         );
 
         response.andDo(print())
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message", containsString("Category not found")));
+
+        then(productService).should().update(any(UUID.class), any(ProductRequestDTO.class));
     }
 
     @Test
@@ -264,10 +327,16 @@ class ProductControllerTest {
     void deleteProduct_ShouldReturnNoContent_WhenProductExists() throws Exception {
         willDoNothing().given(productService).delete(any(UUID.class));
 
-        ResultActions response = mockMvc.perform(delete("/products/{id}", savedProduct.getId()));
+        ResultActions response = mockMvc.perform(
+                delete("/products/{id}", savedProduct.getId())
+                        .with(csrf())
+                        .with(user("admin").roles("USER", "ADMIN"))
+        );
 
         response.andDo(print())
                 .andExpect(status().isNoContent());
+
+        then(productService).should().delete(any(UUID.class));
     }
 
     @Test
@@ -275,10 +344,16 @@ class ProductControllerTest {
     void deleteProduct_ShouldReturnNotFoundException_WhenProductDoesNotExist() throws Exception {
         willThrow(new NotFoundException("Product not found")).given(productService).delete(any(UUID.class));
 
-        ResultActions response = mockMvc.perform(delete("/products/{id}", savedProduct.getId()));
+        ResultActions response = mockMvc.perform(
+                delete("/products/{id}", savedProduct.getId())
+                        .with(csrf())
+                        .with(user("admin").roles("USER", "ADMIN"))
+        );
 
         response.andDo(print())
                 .andExpect(status().isNotFound());
+
+        then(productService).should().delete(any(UUID.class));
     }
 
     private Product createProduct(String name, String description, BigDecimal price, String imageURl, Integer stock, Category category) {
