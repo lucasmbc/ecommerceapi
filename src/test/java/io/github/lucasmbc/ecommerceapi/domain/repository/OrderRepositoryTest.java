@@ -30,8 +30,6 @@ class OrderRepositoryTest {
     void setUp() {
         customer = new Customer();
         customer.setName("teste");
-        customer.setEmail("teste@cart.com");
-        customer.setPassword("123");
         customer.setCpf("12345678910");
 
         customerRepository.save(customer);
