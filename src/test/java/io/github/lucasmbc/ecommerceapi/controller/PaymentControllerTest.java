@@ -127,9 +127,9 @@ class PaymentControllerTest {
         Customer customer = new Customer();
         customer.setId(UUID.randomUUID());
         customer.setName("Joao");
-        customer.setEmail("joao@email.com");
-        customer.setPassword("123456");
         customer.setCpf("892.334.220-38");
+        customer.setPhone("(85)999999999");
+        customer.setAddress("Rua das Flores");
         return customer;
     }
 
