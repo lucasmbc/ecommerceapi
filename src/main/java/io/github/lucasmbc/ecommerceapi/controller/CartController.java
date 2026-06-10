@@ -40,4 +40,16 @@ public class CartController {
                 .map(CartItemMapper::toResponse)
                 .toList();
     }
+
+    @DeleteMapping("/items/{productId}")
+    public ResponseEntity<Void> removeItem(Authentication authentication, @PathVariable UUID productId) {
+        cartService.removeItem(authentication.getName(), productId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping
+    public ResponseEntity<Void> clearCart(Authentication authentication) {
+        cartService.delete(authentication.getName());
+        return ResponseEntity.noContent().build();
+    }
 }
