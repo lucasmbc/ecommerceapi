@@ -64,6 +64,28 @@ public class CartService {
         return cart.getItems();
     }
 
+    @Transactional
+    public void removeItem(String name, UUID productId) {
+        Cart cart = cartRepository.findByCustomerUserEmail(name).orElseThrow(() -> new NotFoundException("Cart not found"));
+
+        boolean removed = cart.getItems().removeIf(item -> item.getProduct().getId().equals(productId));
+
+        if (!removed) {
+            throw new NotFoundException("Item not found in cart");
+        }
+
+        cartRepository.save(cart);
+    }
+
+    @Transactional
+    public void delete(String userEmail) {
+        Cart cart = cartRepository.findByCustomerUserEmail(userEmail).orElseThrow(() -> new NotFoundException("Cart not found"));
+
+        cart.getItems().clear();
+
+        cartRepository.save(cart);
+    }
+
     private CartItem createItem(Cart cart, Product product) {
         CartItem item = new CartItem();
         item.setCart(cart);
