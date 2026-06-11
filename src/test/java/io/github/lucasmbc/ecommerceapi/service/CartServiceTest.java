@@ -16,10 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -66,9 +63,18 @@ class CartServiceTest {
         customer.setUser(user);
 
         cart = new Cart();
+        cart.setId(UUID.randomUUID());
         cart.setCustomer(customer);
 
         product = createProduct("iPhone", BigDecimal.valueOf(3000), 10);
+
+        CartItem cartItem = createCartItem(product, 1);
+
+        List<CartItem> cartItems = new ArrayList<>();
+        cartItems.add(cartItem);
+
+        cart.setItems(cartItems);
+        customer.setCart(cart);
     }
 
     @Test
@@ -169,10 +175,11 @@ class CartServiceTest {
     @Test
     @DisplayName("Should return cart items when cart exists")
     void getItems_ShouldReturnCartItems_WhenCartExists() {
+        Product macBook = createProduct("MacBook", BigDecimal.valueOf(8000), 10);
 
         List<CartItem> cartItems = Arrays.asList(
-                createCartItem("iPhone", BigDecimal.valueOf(3000), 1),
-                createCartItem("MacBook", BigDecimal.valueOf(8000), 1)
+                createCartItem(product, 1),
+                createCartItem(macBook, 1)
         );
         cart.setItems(cartItems);
 
@@ -201,10 +208,61 @@ class CartServiceTest {
         verify(cartRepository, times(1)).findByCustomerUserEmail(customer.getUser().getEmail());
     }
 
-    private CartItem createCartItem(String productName, BigDecimal price, Integer quantity) {
-        Product product = createProduct(productName, price, 10);
+    @Test
+    @DisplayName("Should remove item from cart when item exists")
+    void removeItem_ShouldRemoveItem_WhenItemExists() {
+
+        given(cartRepository.findByCustomerUserEmail(any())).willReturn(Optional.of(cart));
+
+        cartService.removeItem(customer.getUser().getEmail(), product.getId());
+
+        then(cartRepository).should().save(cart);
+
+    }
+
+    @Test
+    @DisplayName("Should throw NotFoundException when removing item that does not exist in cart")
+    void removeItem_ShouldThrowNotFoundException_WhenItemDoesNotExist() {
+
+        given(cartRepository.findByCustomerUserEmail(any())).willReturn(Optional.of(cart));
+
+        NotFoundException exception = assertThrows(NotFoundException.class, () -> {
+            cartService.removeItem(customer.getUser().getEmail(), UUID.randomUUID());
+        });
+
+        assertEquals("Item not found in cart", exception.getMessage());
+        then(cartRepository).should(never()).save(any(Cart.class));
+
+    }
+
+    @Test
+    @DisplayName("Should delete cart when cart exists")
+    void delete_ShouldDeleteCart_WhenCartExists() {
+        given(cartRepository.findByCustomerUserEmail(any())).willReturn(Optional.of(cart));
+
+        cartService.delete(customer.getUser().getEmail());
+
+        then(cartRepository).should(times(1)).save(cart);
+    }
+
+    @Test
+    @DisplayName("Should throw NotFoundException when deleting non-existent cart")
+    void delete_ShouldThrowNotFoundException_WhenCartDoesNotExist() {
+        given(cartRepository.findByCustomerUserEmail(any())).willReturn(Optional.empty());
+
+        NotFoundException exception = assertThrows(NotFoundException.class, () -> {
+            cartService.delete(customer.getUser().getEmail());
+        });
+
+        assertEquals("Cart not found", exception.getMessage());
+        then(cartRepository).should(never()).save(any(Cart.class));
+    }
+
+
+    private CartItem createCartItem(Product product, int quantity) {
 
         CartItem cartItem = new CartItem();
+        cartItem.setId(UUID.randomUUID());
         cartItem.setProduct(product);
         cartItem.setQuantity(quantity);
         cartItem.setUnitPrice(product.getPrice());
