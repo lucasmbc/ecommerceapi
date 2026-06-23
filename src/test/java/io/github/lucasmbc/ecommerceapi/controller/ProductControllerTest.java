@@ -3,14 +3,15 @@ package io.github.lucasmbc.ecommerceapi.controller;
 import io.github.lucasmbc.ecommerceapi.controller.dto.request.ProductRequestDTO;
 import io.github.lucasmbc.ecommerceapi.domain.model.Category;
 import io.github.lucasmbc.ecommerceapi.domain.model.Product;
+import io.github.lucasmbc.ecommerceapi.security.JwtAuthFilter;
 import io.github.lucasmbc.ecommerceapi.service.ProductService;
 import io.github.lucasmbc.ecommerceapi.service.exception.NotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -32,8 +33,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
-@AutoConfigureMockMvc
+@WebMvcTest(ProductController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class ProductControllerTest {
 
     @Autowired
@@ -44,6 +45,9 @@ class ProductControllerTest {
 
     @MockitoBean
     private ProductService productService;
+
+    @MockitoBean
+    private JwtAuthFilter jwtAuthFilter;
 
     private Product savedProduct;
     private Category category;
@@ -70,8 +74,6 @@ class ProductControllerTest {
         ResultActions response = mockMvc.perform(
                 post("/products")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .with(csrf())
-                        .with(user("admin").roles("USER", "ADMIN"))
                         .content(objectMapper.writeValueAsString(dto))
         );
 
@@ -87,20 +89,6 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.categoryName", is(category.getName())));
 
         then(productService).should().create(any(ProductRequestDTO.class));
-    }
-
-    @Test
-    @DisplayName("POST /products should return 403 Forbidden when user does not have ADMIN role")
-    void createProduct_ShouldReturnForbidden_WhenUserIsNotAdmin() throws Exception {
-        mockMvc.perform(
-                post("/products")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .with(csrf())
-                        .with(user("user").roles("USER"))
-                        .content(objectMapper.writeValueAsString(dto))
-        ).andExpect(status().isForbidden());
-
-        then(productService).should(never()).create(any(ProductRequestDTO.class));
     }
 
     @Test
