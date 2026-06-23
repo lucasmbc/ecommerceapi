@@ -42,6 +42,7 @@ public class ProductController {
         return ResponseEntity.created(location).body(productResponseDTO);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     @GetMapping
     public ResponseEntity<List<ProductResponseDTO>> findAll() {
         List<Product> products = productService.findAll();
@@ -49,6 +50,7 @@ public class ProductController {
         return ResponseEntity.ok(productResponseDto);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponseDTO> findById(@PathVariable String id) {
         var idProduct = UUID.fromString(id);
@@ -56,12 +58,14 @@ public class ProductController {
         return ResponseEntity.ok(ProductMapper.toResponse(product));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<ProductResponseDTO> update(@PathVariable String id, @RequestBody ProductRequestDTO dto) {
         var product = productService.update(UUID.fromString(id), dto);
         return ResponseEntity.ok(ProductMapper.toResponse(product));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable String id) {
         productService.delete(UUID.fromString(id));

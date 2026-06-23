@@ -4,6 +4,7 @@ import io.github.lucasmbc.ecommerceapi.controller.dto.response.CartItemResponseD
 import io.github.lucasmbc.ecommerceapi.controller.mapper.CartItemMapper;
 import io.github.lucasmbc.ecommerceapi.service.CartService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -21,6 +22,7 @@ public class CartController {
         this.cartService = cartService;
     }
 
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
     @PostMapping("/items/{productId}")
     public ResponseEntity<Void> addItem(Authentication authentication, @PathVariable String productId, @RequestParam Integer quantity) {
         cartService.addItem(authentication.getName(), UUID.fromString(productId), quantity);
@@ -33,6 +35,7 @@ public class CartController {
         return ResponseEntity.created(location).build();
     }
 
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
     @GetMapping
     public List<CartItemResponseDTO> getCart(Authentication authentication) {
         return cartService.getItems(authentication.getName())
@@ -41,12 +44,14 @@ public class CartController {
                 .toList();
     }
 
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
     @DeleteMapping("/items/{productId}")
     public ResponseEntity<Void> removeItem(Authentication authentication, @PathVariable UUID productId) {
         cartService.removeItem(authentication.getName(), productId);
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
     @DeleteMapping
     public ResponseEntity<Void> clearCart(Authentication authentication) {
         cartService.delete(authentication.getName());

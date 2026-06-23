@@ -6,6 +6,7 @@ import io.github.lucasmbc.ecommerceapi.domain.model.Payment;
 import io.github.lucasmbc.ecommerceapi.domain.model.PaymentType;
 import io.github.lucasmbc.ecommerceapi.service.PaymentService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -22,6 +23,7 @@ public class PaymentController {
         this.paymentService = paymentService;
     }
 
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
     @PostMapping("/{orderId}")
     public ResponseEntity<PaymentResponseDTO> pay(@PathVariable String orderId, @RequestParam PaymentType paymentType) {
         var saved = paymentService.pay(UUID.fromString(orderId), paymentType);

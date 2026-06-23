@@ -4,6 +4,7 @@ import io.github.lucasmbc.ecommerceapi.controller.dto.response.OrderResponseDTO;
 import io.github.lucasmbc.ecommerceapi.controller.mapper.OrderMapper;
 import io.github.lucasmbc.ecommerceapi.service.OrderService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +23,7 @@ public class OrderController {
         this.orderService = orderService;
     }
 
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
     @PostMapping
     public ResponseEntity<OrderResponseDTO> createOrder(Authentication authentication) {
         var saved = orderService.checkout(authentication.getName());

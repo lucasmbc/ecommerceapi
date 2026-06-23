@@ -7,6 +7,7 @@ import io.github.lucasmbc.ecommerceapi.domain.model.Customer;
 import io.github.lucasmbc.ecommerceapi.service.CustomerService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -24,6 +25,7 @@ public class CustomerController {
         this.customerService = customerService;
     }
 
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
     @PostMapping
     public ResponseEntity<CustomerResponseDTO> create(
             @Valid @RequestBody CustomerRequestDTO request,
@@ -42,6 +44,7 @@ public class CustomerController {
         return ResponseEntity.created(location).body(customerResponseDTO);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public ResponseEntity<List<CustomerResponseDTO>> findAll() {
         List<Customer> customers = customerService.findAll();
@@ -49,12 +52,14 @@ public class CustomerController {
         return ResponseEntity.ok(customerResponseDTOs);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/{email}")
     public ResponseEntity<CustomerResponseDTO> findByEmail(@PathVariable String email) {
         var customer = customerService.findByEmail(email);
         return ResponseEntity.ok(CustomerMapper.toResponse(customer));
     }
 
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
     @PutMapping
     public ResponseEntity<CustomerResponseDTO> update(
             Authentication authentication,
@@ -65,6 +70,7 @@ public class CustomerController {
         return ResponseEntity.ok(CustomerMapper.toResponse(customer));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping
     public ResponseEntity<Void> delete(Authentication authentication) {
         customerService.delete(authentication.getName());

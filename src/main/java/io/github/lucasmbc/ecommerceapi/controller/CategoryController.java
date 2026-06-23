@@ -6,6 +6,7 @@ import io.github.lucasmbc.ecommerceapi.controller.mapper.CategoryMapper;
 import io.github.lucasmbc.ecommerceapi.service.CategoryService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -23,6 +24,7 @@ public class CategoryController {
         this.categoryService = categoryService;
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<CategoryResponseDTO> create(@Valid @RequestBody CategoryRequestDTO dto) {
         var saved = categoryService.create(CategoryMapper.toEntity(dto));
@@ -37,6 +39,7 @@ public class CategoryController {
         return ResponseEntity.created(location).body(categoryResponseDTO);
     }
 
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
     @GetMapping
     public ResponseEntity<List<CategoryResponseDTO>> findAll() {
         var categories = categoryService.findAll();
@@ -44,18 +47,21 @@ public class CategoryController {
         return ResponseEntity.ok(categoryResponseDto);
     }
 
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
     @GetMapping("/{id}")
     public ResponseEntity<CategoryResponseDTO> findById(@PathVariable String id) {
         var category = categoryService.findById(UUID.fromString(id));
         return ResponseEntity.ok(CategoryMapper.toResponse(category));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public  ResponseEntity<CategoryResponseDTO> update(@PathVariable String id, @RequestBody CategoryRequestDTO dto) {
         var category = categoryService.update(UUID.fromString(id), CategoryMapper.toEntity(dto));
         return ResponseEntity.ok(CategoryMapper.toResponse(category));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable String id) {
         categoryService.delete(UUID.fromString(id));
