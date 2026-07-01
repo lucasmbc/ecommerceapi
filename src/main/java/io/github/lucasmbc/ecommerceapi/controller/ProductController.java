@@ -5,6 +5,10 @@ import io.github.lucasmbc.ecommerceapi.controller.dto.response.ProductResponseDT
 import io.github.lucasmbc.ecommerceapi.controller.mapper.ProductMapper;
 import io.github.lucasmbc.ecommerceapi.domain.model.Product;
 import io.github.lucasmbc.ecommerceapi.service.ProductService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,6 +21,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/products")
+@Tag(name = "Products", description = "Products API")
 public class ProductController {
 
     private final ProductService productService;
@@ -27,6 +32,12 @@ public class ProductController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
+    @Operation(summary = "Create a new product", description = "Create a new product")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Product created"),
+            @ApiResponse(responseCode = "400", description = "Validation error"),
+            @ApiResponse(responseCode = "404", description = "Category not found")
+    })
     public ResponseEntity<ProductResponseDTO> create(@Valid @RequestBody ProductRequestDTO dto) {
 
         Product saved = productService.create(dto);
@@ -44,6 +55,11 @@ public class ProductController {
 
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     @GetMapping
+    @Operation(summary = "Find all products", description = "Find all products")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Products found"),
+            @ApiResponse(responseCode = "404", description = "Products not found")
+    })
     public ResponseEntity<List<ProductResponseDTO>> findAll() {
         List<Product> products = productService.findAll();
         var productResponseDto = products.stream().map(ProductMapper::toResponse).toList();
@@ -52,6 +68,11 @@ public class ProductController {
 
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     @GetMapping("/{id}")
+    @Operation(summary = "Find product by ID", description = "Find product by ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Product found"),
+            @ApiResponse(responseCode = "404", description = "Product not found")
+    })
     public ResponseEntity<ProductResponseDTO> findById(@PathVariable String id) {
         var idProduct = UUID.fromString(id);
         Product product = productService.findById(idProduct);
@@ -60,6 +81,11 @@ public class ProductController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
+    @Operation(summary = "Update a product", description = "Update a product")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Product updated"),
+            @ApiResponse(responseCode = "404", description = "Product not found")
+    })
     public ResponseEntity<ProductResponseDTO> update(@PathVariable String id, @RequestBody ProductRequestDTO dto) {
         var product = productService.update(UUID.fromString(id), dto);
         return ResponseEntity.ok(ProductMapper.toResponse(product));
@@ -67,6 +93,11 @@ public class ProductController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
+    @Operation(summary = "Delete a product", description = "Delete a product")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Product deleted"),
+            @ApiResponse(responseCode = "404", description = "Product not found")
+    })
     public ResponseEntity<Void> delete(@PathVariable String id) {
         productService.delete(UUID.fromString(id));
         return ResponseEntity.noContent().build();

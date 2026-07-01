@@ -8,6 +8,10 @@ import io.github.lucasmbc.ecommerceapi.controller.mapper.UserMapper;
 import io.github.lucasmbc.ecommerceapi.domain.model.User;
 import io.github.lucasmbc.ecommerceapi.service.JwtService;
 import io.github.lucasmbc.ecommerceapi.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -22,6 +26,7 @@ import java.net.URI;
 
 @RestController
 @RequestMapping("/auth")
+@Tag(name = "Authentication", description = "Authentication API")
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -39,6 +44,11 @@ public class AuthController {
     }
 
     @PostMapping("/register")
+    @Operation(summary = "Register a new user", description = "Register a new user")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "User created"),
+            @ApiResponse(responseCode = "400", description = "Validation error")
+    })
     public ResponseEntity<AuthResponseDTO> register(@Valid @RequestBody RegisterRequestDTO dto) {
 
         User user = UserMapper.toEntity(dto);
@@ -60,6 +70,11 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @Operation(summary = "Login a user", description = "Login a user")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "User logged in"),
+            @ApiResponse(responseCode = "400", description = "Validation error")
+    })
     public ResponseEntity<AuthResponseDTO> login(@Valid  @RequestBody LoginRequestDTO dto) {
 
         authenticationManager.authenticate(
