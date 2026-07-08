@@ -2,6 +2,7 @@ package io.github.lucasmbc.ecommerceapi.controller;
 
 import io.github.lucasmbc.ecommerceapi.controller.dto.request.CategoryRequestDTO;
 import io.github.lucasmbc.ecommerceapi.domain.model.Category;
+import io.github.lucasmbc.ecommerceapi.security.JwtAuthFilter;
 import io.github.lucasmbc.ecommerceapi.service.CategoryService;
 import io.github.lucasmbc.ecommerceapi.service.exception.BusinessException;
 import io.github.lucasmbc.ecommerceapi.service.exception.NotFoundException;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -28,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(CategoryController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class CategoryControllerTest {
 
     @Autowired
@@ -38,6 +41,9 @@ class CategoryControllerTest {
 
     @MockitoBean
     private CategoryService categoryService;
+
+    @MockitoBean
+    private JwtAuthFilter jwtAuthFilter;
 
     private CategoryRequestDTO dto;
     private Category category;
