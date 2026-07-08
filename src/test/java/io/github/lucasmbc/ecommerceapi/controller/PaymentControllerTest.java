@@ -1,12 +1,14 @@
 package io.github.lucasmbc.ecommerceapi.controller;
 
 import io.github.lucasmbc.ecommerceapi.domain.model.*;
+import io.github.lucasmbc.ecommerceapi.security.JwtAuthFilter;
 import io.github.lucasmbc.ecommerceapi.service.PaymentService;
 import io.github.lucasmbc.ecommerceapi.service.exception.NotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -27,6 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(PaymentController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class PaymentControllerTest {
 
     @Autowired
@@ -34,6 +37,9 @@ class PaymentControllerTest {
 
     @MockitoBean
     private PaymentService paymentService;
+
+    @MockitoBean
+    private JwtAuthFilter jwtAuthFilter;
 
     private Payment payment;
 
