@@ -3,6 +3,7 @@ package io.github.lucasmbc.ecommerceapi.controller;
 import io.github.lucasmbc.ecommerceapi.controller.dto.request.CustomerRequestDTO;
 import io.github.lucasmbc.ecommerceapi.domain.model.Customer;
 import io.github.lucasmbc.ecommerceapi.domain.model.User;
+import io.github.lucasmbc.ecommerceapi.security.JwtAuthFilter;
 import io.github.lucasmbc.ecommerceapi.service.CustomerService;
 import io.github.lucasmbc.ecommerceapi.service.exception.CpfAlreadyExistsException;
 import io.github.lucasmbc.ecommerceapi.service.exception.NotFoundException;
@@ -10,9 +11,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -25,15 +27,13 @@ import java.util.UUID;
 
 import static org.hamcrest.Matchers.is;
 import static org.mockito.BDDMockito.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@AutoConfigureMockMvc
+@WebMvcTest(CustomerController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class CustomerControllerTest {
 
     @Autowired
@@ -45,17 +45,24 @@ class CustomerControllerTest {
     @MockitoBean
     private CustomerService customerService;
 
+    @MockitoBean
+    private JwtAuthFilter jwtAuthFilter;
+
     private CustomerRequestDTO dto;
     private Customer customer;
     private User user;
+    private final String userEmail = "joao@email.com";
+    private UsernamePasswordAuthenticationToken auth;
 
     @BeforeEach
     public void setup() {
-        user = createUser("joao@email.com", "123456", "ROLE_USER");
+        user = createUser(userEmail, "123456", "ROLE_USER");
 
         dto = createCustomerRequestDTO("Joao", "892.334.220-38", "(85)988128522", "Rua das Andorinhas");
 
         customer = createCustomer(dto, user);
+
+        auth = new UsernamePasswordAuthenticationToken(userEmail, null, List.of());
     }
 
     private User createUser(String email, String password, String role) {
@@ -94,13 +101,12 @@ class CustomerControllerTest {
     @Test
     @DisplayName("POST /customers should create customer and return 201 created customer")
     void createCustomer_ShouldReturnCreatedCustomer() throws Exception {
-        given(customerService.create(any(CustomerRequestDTO.class), eq("admin"))).willReturn(customer);
+        given(customerService.create(any(CustomerRequestDTO.class), anyString())).willReturn(customer);
 
         ResultActions response = mockMvc.perform(
                 post("/customers")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .with(csrf())
-                        .with(user("admin").roles("USER", "ADMIN"))
+                        .principal(auth)
                         .content(objectMapper.writeValueAsString(dto))
         );
 
@@ -111,19 +117,18 @@ class CustomerControllerTest {
                 .andExpect(jsonPath("$.phone", is(customer.getPhone())))
                 .andExpect(jsonPath("$.address", is(customer.getAddress())));
 
-        then(customerService).should().create(any(CustomerRequestDTO.class), eq("admin"));
+        then(customerService).should().create(any(CustomerRequestDTO.class), eq(userEmail));
     }
 
     @Test
     @DisplayName("POST /customers should return 409 CpfAlreadyExistsException when cpf already exists")
     void createCustomer_ShouldReturnCpfAlreadyExistsException_WhenCpfAlreadyExists() throws Exception {
-        given(customerService.create(any(CustomerRequestDTO.class), eq("admin"))).willThrow(new CpfAlreadyExistsException(customer.getCpf()));
+        given(customerService.create(any(CustomerRequestDTO.class), anyString())).willThrow(new CpfAlreadyExistsException(customer.getCpf()));
 
         ResultActions response = mockMvc.perform(
                 post("/customers")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .with(csrf())
-                        .with(user("admin").roles("USER", "ADMIN"))
+                        .principal(auth)
                         .content(objectMapper.writeValueAsString(customer))
         );
 
@@ -131,7 +136,7 @@ class CustomerControllerTest {
                 .andDo(print())
                 .andExpect(jsonPath("$.message", is("CPF already registered: " + customer.getCpf())));
 
-        then(customerService).should(times(1)).create(any(CustomerRequestDTO.class), eq("admin"));
+        then(customerService).should(times(1)).create(any(CustomerRequestDTO.class), eq(userEmail));
     }
 
     @Test
@@ -148,8 +153,7 @@ class CustomerControllerTest {
         ResultActions response = mockMvc.perform(
                 post("/customers")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .with(csrf())
-                        .with(user("admin").roles("USER", "ADMIN"))
+                        .principal(auth)
                         .content(invalidJson)
         );
 
@@ -172,8 +176,7 @@ class CustomerControllerTest {
         ResultActions response = mockMvc.perform(
                 post("/customers")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .with(csrf())
-                        .with(user("admin").roles("USER", "ADMIN"))
+                        .principal(auth)
                         .content(invalidJson)
         );
 
@@ -196,8 +199,7 @@ class CustomerControllerTest {
         ResultActions response = mockMvc.perform(
                 post("/customers")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .with(csrf())
-                        .with(user("admin").roles("USER", "ADMIN"))
+                        .principal(auth)
                         .content(invalidJson)
         );
 
@@ -226,7 +228,7 @@ class CustomerControllerTest {
 
         ResultActions response = mockMvc.perform(
                 get("/customers")
-                        .with(user("admin").roles("USER", "ADMIN"))
+                        .principal(auth)
         );
 
         response.andExpect(status().isOk())
@@ -242,7 +244,7 @@ class CustomerControllerTest {
 
         ResultActions response = mockMvc.perform(
                 get("/customers")
-                        .with(user("admin").roles("USER", "ADMIN"))
+                        .principal(auth)
         );
 
         response.andExpect(status().isNotFound())
@@ -257,7 +259,7 @@ class CustomerControllerTest {
 
         ResultActions response = mockMvc.perform(
                 get("/customers/{email}", customer.getUser().getEmail())
-                        .with(user("admin").roles("USER", "ADMIN"))
+                        .principal(auth)
         );
 
         response.andExpect(status().isOk())
@@ -274,7 +276,7 @@ class CustomerControllerTest {
 
         ResultActions response = mockMvc.perform(
                 get("/customers/{email}", customer.getUser().getEmail())
-                        .with(user("admin").roles("USER", "ADMIN"))
+                        .principal(auth)
         );
 
         response.andExpect(status().isNotFound())
@@ -297,8 +299,7 @@ class CustomerControllerTest {
         ResultActions response = mockMvc.perform(
                 put("/customers")
                 .contentType(MediaType.APPLICATION_JSON)
-                        .with(csrf())
-                        .with(user("admin").roles("USER", "ADMIN"))
+                        .principal(auth)
                         .content(objectMapper.writeValueAsString(updatedCustomer))
         );
 
@@ -323,8 +324,7 @@ class CustomerControllerTest {
         ResultActions response = mockMvc.perform(
                 put("/customers")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .with(csrf())
-                        .with(user("admin").roles("USER", "ADMIN"))
+                        .principal(auth)
                         .content(objectMapper.writeValueAsString(updatedCustomer))
         );
 
@@ -339,8 +339,7 @@ class CustomerControllerTest {
         willDoNothing().given(customerService).delete(any(String.class));
 
         ResultActions response = mockMvc.perform(delete("/customers")
-                .with(csrf())
-                .with(user("admin").roles("USER", "ADMIN"))
+                .principal(auth)
         );
 
         response.andExpect(status().isNoContent())
@@ -353,8 +352,7 @@ class CustomerControllerTest {
         willThrow(new NotFoundException("Customer not found")).given(customerService).delete(any(String.class));
 
         ResultActions response = mockMvc.perform(delete("/customers")
-                .with(csrf())
-                .with(user("admin").roles("USER", "ADMIN"))
+                .principal(auth)
         );
 
         response.andExpect(status().isNotFound())
