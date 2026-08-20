@@ -12,6 +12,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -167,7 +170,8 @@ class ProductControllerTest {
         productList.add(savedProduct);
         productList.add(product2);
 
-        given(productService.findAll()).willReturn(productList);
+        var page = new PageImpl<>(productList, PageRequest.of(0, 10), productList.size());
+        given(productService.findAll(any(Pageable.class))).willReturn(page);
 
         ResultActions response = mockMvc.perform(
                 get("/products")
@@ -177,15 +181,15 @@ class ProductControllerTest {
 
         response.andDo(print())
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.size()", is(productList.size())));
+                .andExpect(jsonPath("$.content.size()", is(productList.size())));
 
-        then(productService).should().findAll();
+        then(productService).should().findAll(any(Pageable.class));
     }
 
     @Test
     @DisplayName("GET /products should return 404 NotFoundException when product is empty")
     void getAllProducts_ShouldReturnNotFoundException_WhenEmpty() throws Exception {
-        given(productService.findAll()).willThrow(new NotFoundException("Products not found"));
+        given(productService.findAll(any(Pageable.class))).willThrow(new NotFoundException("Products not found"));
 
         ResultActions response = mockMvc.perform(
                 get("/products")
