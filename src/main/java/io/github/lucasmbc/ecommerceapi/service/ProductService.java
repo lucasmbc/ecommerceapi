@@ -7,9 +7,10 @@ import io.github.lucasmbc.ecommerceapi.domain.model.Product;
 import io.github.lucasmbc.ecommerceapi.domain.repository.CategoryRepository;
 import io.github.lucasmbc.ecommerceapi.domain.repository.ProductRepository;
 import io.github.lucasmbc.ecommerceapi.service.exception.NotFoundException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -36,8 +37,8 @@ public class ProductService {
         return productRepository.findById(id).orElseThrow(() -> new NotFoundException("Product not found"));
     }
 
-    public List<Product> findAll() {
-        List<Product> products = productRepository.findAll();
+    public Page<Product> findAll(Pageable pageable) {
+        Page<Product> products = productRepository.findAll(pageable);
         if(products.isEmpty()) throw new NotFoundException("Products not found");
         return products;
     }
