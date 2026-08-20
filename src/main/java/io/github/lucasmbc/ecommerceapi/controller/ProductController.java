@@ -1,7 +1,9 @@
 package io.github.lucasmbc.ecommerceapi.controller;
 
 import io.github.lucasmbc.ecommerceapi.controller.dto.request.ProductRequestDTO;
+import io.github.lucasmbc.ecommerceapi.controller.dto.response.PageResponseDTO;
 import io.github.lucasmbc.ecommerceapi.controller.dto.response.ProductResponseDTO;
+import io.github.lucasmbc.ecommerceapi.controller.mapper.PageMapper;
 import io.github.lucasmbc.ecommerceapi.controller.mapper.ProductMapper;
 import io.github.lucasmbc.ecommerceapi.domain.model.Product;
 import io.github.lucasmbc.ecommerceapi.service.ProductService;
@@ -10,13 +12,15 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -60,10 +64,14 @@ public class ProductController {
             @ApiResponse(responseCode = "200", description = "Products found"),
             @ApiResponse(responseCode = "404", description = "Products not found")
     })
-    public ResponseEntity<List<ProductResponseDTO>> findAll() {
-        List<Product> products = productService.findAll();
-        var productResponseDto = products.stream().map(ProductMapper::toResponse).toList();
-        return ResponseEntity.ok(productResponseDto);
+    public ResponseEntity<PageResponseDTO<ProductResponseDTO>> findAll(
+            @PageableDefault Pageable pageable
+    ) {
+        Page<ProductResponseDTO> products = productService.findAll(pageable).map(ProductMapper::toResponse);
+
+        PageResponseDTO<ProductResponseDTO> response = PageMapper.toResponse(products);
+
+        return ResponseEntity.ok(response);
     }
 
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
