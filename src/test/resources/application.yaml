@@ -4,3 +4,11 @@ spring:
     username: sa
     password:
     driver-class-name: org.h2.Driver
+
+  jackson:
+    deserialization:
+      accept-single-value-as-array: true
+
+springDoc:
+    api-docs:
+      enabled: false
