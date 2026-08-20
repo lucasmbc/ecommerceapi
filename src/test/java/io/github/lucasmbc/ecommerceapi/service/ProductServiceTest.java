@@ -12,6 +12,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -99,12 +102,15 @@ class ProductServiceTest {
         newProduct.setPrice(BigDecimal.valueOf(5000));
         newProduct.setStock(5);
 
-        given(productRepository.findAll()).willReturn(List.of(savedProduct, newProduct));
+        var products = List.of(savedProduct, newProduct);
+        var page = new PageImpl<>(products, PageRequest.of(0, 10), products.size());
+        given(productRepository.findAll(any(Pageable.class))).willReturn(page);
 
-        List<Product> foundProducts = productService.findAll();
+        var foundProductsPage = productService.findAll(PageRequest.of(0, 10));
 
-        assertNotNull(foundProducts);
-        assertEquals(2, foundProducts.size());
+        assertNotNull(foundProductsPage);
+        assertEquals(2, foundProductsPage.getContent().size());
+        assertEquals(2L, foundProductsPage.getTotalElements());
     }
 
     @Test
