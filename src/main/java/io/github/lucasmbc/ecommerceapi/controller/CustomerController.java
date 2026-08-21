@@ -2,7 +2,9 @@ package io.github.lucasmbc.ecommerceapi.controller;
 
 import io.github.lucasmbc.ecommerceapi.controller.dto.request.CustomerRequestDTO;
 import io.github.lucasmbc.ecommerceapi.controller.dto.response.CustomerResponseDTO;
+import io.github.lucasmbc.ecommerceapi.controller.dto.response.PageResponseDTO;
 import io.github.lucasmbc.ecommerceapi.controller.mapper.CustomerMapper;
+import io.github.lucasmbc.ecommerceapi.controller.mapper.PageMapper;
 import io.github.lucasmbc.ecommerceapi.domain.model.Customer;
 import io.github.lucasmbc.ecommerceapi.service.CustomerService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,6 +12,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -17,7 +22,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
-import java.util.List;
 
 @RestController
 @RequestMapping("/customers")
@@ -62,10 +66,16 @@ public class CustomerController {
             @ApiResponse(responseCode = "200", description = "Customer found"),
             @ApiResponse(responseCode = "404", description = "Customers not found")
     })
-    public ResponseEntity<List<CustomerResponseDTO>> findAll() {
-        List<Customer> customers = customerService.findAll();
-        var customerResponseDTOs = customers.stream().map((CustomerMapper::toResponse)).toList();
-        return ResponseEntity.ok(customerResponseDTOs);
+    public ResponseEntity<PageResponseDTO<CustomerResponseDTO>> findAll(
+            @PageableDefault Pageable pageable
+            ) {
+        Page<CustomerResponseDTO> customers = customerService
+                .findAll(pageable)
+                .map(CustomerMapper::toResponse);
+
+        PageResponseDTO<CustomerResponseDTO> response = PageMapper.toResponse(customers);
+
+        return ResponseEntity.ok(response);
     }
 
     @PreAuthorize("hasRole('ADMIN')")
