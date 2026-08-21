@@ -13,6 +13,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -224,7 +227,8 @@ class CustomerControllerTest {
         customers.add(customer);
         customers.add(customer1);
 
-        given(customerService.findAll()).willReturn(customers);
+        var page = new PageImpl<>(customers, PageRequest.of(0, 10), customers.size());
+        given(customerService.findAll(any(Pageable.class))).willReturn(page);
 
         ResultActions response = mockMvc.perform(
                 get("/customers")
@@ -233,14 +237,14 @@ class CustomerControllerTest {
 
         response.andExpect(status().isOk())
                 .andDo(print())
-                .andExpect(jsonPath("$.size()", is(customers.size())));
+                .andExpect(jsonPath("$.content.size()", is(customers.size())));
 
     }
 
     @Test
     @DisplayName("GET /customers should return 404 NotFoundException when customer list not found")
     void getAllCustomers_ShouldReturnNotFoundException_WhenCustomerListNotFound() throws Exception {
-        given(customerService.findAll()).willThrow(new NotFoundException("Customers not found"));
+        given(customerService.findAll(any(Pageable.class))).willThrow(new NotFoundException("Customers not found"));
 
         ResultActions response = mockMvc.perform(
                 get("/customers")
