@@ -4,6 +4,7 @@ import io.github.lucasmbc.ecommerceapi.controller.dto.request.CustomerRequestDTO
 import io.github.lucasmbc.ecommerceapi.domain.model.Customer;
 import io.github.lucasmbc.ecommerceapi.domain.model.User;
 import io.github.lucasmbc.ecommerceapi.domain.repository.CustomerRepository;
+import io.github.lucasmbc.ecommerceapi.domain.repository.UserRepository;
 import io.github.lucasmbc.ecommerceapi.service.exception.EmailAlreadyExistsException;
 import io.github.lucasmbc.ecommerceapi.service.exception.NotFoundException;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,6 +14,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -24,6 +28,9 @@ import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class CustomerServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
 
     @Mock
     private CustomerRepository customerRepository;
@@ -64,6 +71,7 @@ class CustomerServiceTest {
 
     private Customer createCustomer(CustomerRequestDTO dto, User user) {
         Customer customer = new Customer();
+        customer.setId(UUID.randomUUID());
         customer.setName(dto.getName());
         customer.setCpf(dto.getCpf());
         customer.setPhone(dto.getPhone());
@@ -75,7 +83,8 @@ class CustomerServiceTest {
     @DisplayName("JUnit test should create customer")
     @Test
     void shouldCreateCustomer() {
-        given(customerRepository.save(customer)).willReturn(customer);
+        given(userRepository.findByEmail(user.getEmail())).willReturn(Optional.of(user));
+        given(customerRepository.save(any(Customer.class))).willReturn(customer);
 
         Customer saved =  customerService.create(dto, user.getEmail());
 
@@ -90,7 +99,8 @@ class CustomerServiceTest {
     @DisplayName("JUnit test should throw exception when email exists")
     @Test
     void shouldThrowExceptionWhenEmailExists() {
-        given(customerRepository.save(customer)).willThrow(new EmailAlreadyExistsException(customer.getUser().getEmail()));
+        given(userRepository.findByEmail(user.getEmail())).willReturn(Optional.of(user));
+        given(customerRepository.save(any(Customer.class))).willThrow(new EmailAlreadyExistsException(customer.getUser().getEmail()));
 
         EmailAlreadyExistsException businessException = assertThrows(EmailAlreadyExistsException.class, () -> customerService.create(dto, user.getEmail()));
 
@@ -99,8 +109,8 @@ class CustomerServiceTest {
 
     @DisplayName("JUnit test should find customer by id")
     @Test
-    void shouldFindCustomerById() {
-        given(customerRepository.findById(customer.getId())).willReturn(Optional.of(customer));
+    void shouldFindCustomerByEmail() {
+        given(customerRepository.findByUserEmail(customer.getUser().getEmail())).willReturn(Optional.of(customer));
 
         Customer saved = customerService.findByEmail(customer.getUser().getEmail());
 
@@ -124,20 +134,23 @@ class CustomerServiceTest {
         CustomerRequestDTO dto1 = createCustomerRequestDTO("teste1", "32145678910", "85999885577", "Rua das Andorinhas");
         Customer customer1 = createCustomer(dto1, user);
 
-        given(customerRepository.findAll()).willReturn(List.of(customer, customer1));
+        var customerList = List.of(customer, customer1);
+        var page = new PageImpl<>(customerList, PageRequest.of(0, 10), customerList.size());
 
-        List<Customer> customers = customerService.findAll();
+        given(customerRepository.findAll(any(Pageable.class))).willReturn(page);
 
-        assertNotNull(customers);
-        assertEquals(2, customers.size());
+        var foundCustomersPage = customerService.findAll(PageRequest.of(0, 10));
+
+        assertNotNull(foundCustomersPage);
+        assertEquals(2, foundCustomersPage.getContent().size());
     }
 
     @DisplayName("JUnit test should throw exception when customer list not found")
     @Test
     void shouldThrowExceptionWhenCustomerListNotFound() {
-        given(customerRepository.findAll()).willThrow(new NotFoundException("Customers not found"));
+        given(customerRepository.findAll(any(Pageable.class))).willThrow(new NotFoundException("Customers not found"));
 
-        NotFoundException exception = assertThrows(NotFoundException.class, () -> customerService.findAll());
+        NotFoundException exception = assertThrows(NotFoundException.class, () -> customerService.findAll(PageRequest.of(0, 10)));
 
         assertEquals("Customers not found", exception.getMessage());
     }
@@ -145,13 +158,14 @@ class CustomerServiceTest {
     @Test
     @DisplayName("JUnit test should update customer")
     void shouldUpdateCustomer() {
+        given(userRepository.findByEmail(customer.getUser().getEmail())).willReturn(Optional.of(user));
         given(customerRepository.findByUserEmail(customer.getUser().getEmail())).willReturn(Optional.of(customer));
 
         CustomerRequestDTO updatedCustomerDTO = createCustomerRequestDTO("updatedTest", "12345678910", "85999251315", "Rua teste");
 
         customer = createCustomer(updatedCustomerDTO, user);
 
-        given(customerRepository.save(customer)).willReturn(customer);
+        given(customerRepository.save(any(Customer.class))).willReturn(customer);
 
         Customer updatedCustomer = customerService.update(customer.getUser().getEmail(), updatedCustomerDTO);
 
