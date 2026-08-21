@@ -9,10 +9,10 @@ import io.github.lucasmbc.ecommerceapi.domain.repository.UserRepository;
 import io.github.lucasmbc.ecommerceapi.service.exception.CpfAlreadyExistsException;
 import io.github.lucasmbc.ecommerceapi.service.exception.CustomerAlreadyExistsException;
 import io.github.lucasmbc.ecommerceapi.service.exception.NotFoundException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 public class CustomerService {
@@ -48,8 +48,8 @@ public class CustomerService {
     }
 
     @Transactional(readOnly = true)
-    public List<Customer> findAll() {
-        List<Customer> customersList = customerRepository.findAll();
+    public Page<Customer> findAll(Pageable pageable) {
+        Page<Customer> customersList = customerRepository.findAll(pageable);
         if(customersList.isEmpty()) throw new NotFoundException("Customers not found");
         return customersList;
     }
