@@ -55,6 +55,8 @@ public class CartService {
 
         item.setQuantity(item.getQuantity() + quantity);
 
+        product.setStock(product.getStock() - quantity);
+
         cartItemRepository.save(item);
     }
 
@@ -67,12 +69,20 @@ public class CartService {
     @Transactional
     public void removeItem(String name, UUID productId) {
         Cart cart = cartRepository.findByCustomerUserEmail(name).orElseThrow(() -> new NotFoundException("Cart not found"));
+        Product product = productRepository.findById(productId).orElseThrow(() -> new NotFoundException("Product not found"));
 
-        boolean removed = cart.getItems().removeIf(item -> item.getProduct().getId().equals(productId));
+        CartItem item = cart.getItems().stream()
+                .filter(i -> i.getProduct().getId().equals(productId))
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("Item not found in cart"));
 
-        if (!removed) {
-            throw new NotFoundException("Item not found in cart");
-        }
+        int quantity = item.getQuantity();
+
+        cart.getItems().remove(item);
+        cartItemRepository.delete(item);
+
+        product.setStock(product.getStock() + quantity);
+        productRepository.save(product);
 
         cartRepository.save(cart);
     }
