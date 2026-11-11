@@ -3,6 +3,8 @@ package io.github.lucasmbc.ecommerceapi.service;
 import io.github.lucasmbc.ecommerceapi.domain.model.*;
 import io.github.lucasmbc.ecommerceapi.domain.repository.OrderRepository;
 import io.github.lucasmbc.ecommerceapi.domain.repository.PaymentRepository;
+import io.github.lucasmbc.ecommerceapi.service.payment.PaymentStrategy;
+import io.github.lucasmbc.ecommerceapi.service.payment.PaymentStrategyFactory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,6 +29,12 @@ class PaymentServiceTest {
     @Mock
     private OrderRepository orderRepository;
 
+    @Mock
+    private PaymentStrategyFactory paymentStrategyFactory;
+
+    @Mock
+    private PaymentStrategy paymentStrategy;
+
     @InjectMocks
     private PaymentService paymentService;
 
@@ -37,6 +45,8 @@ class PaymentServiceTest {
         order.setTotal(BigDecimal.TEN);
 
         given(orderRepository.findById(order.getId())).willReturn(Optional.of(order));
+        given(paymentStrategyFactory.getStrategy(PaymentType.PIX)).willReturn(paymentStrategy);
+        given(paymentStrategy.process(order)).willReturn(PaymentStatus.APPROVED);
         given(paymentRepository.save(any(Payment.class))).willAnswer(i -> i.getArgument(0));
 
         Payment payment = paymentService.pay(order.getId(), PaymentType.PIX);
